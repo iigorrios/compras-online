@@ -6,6 +6,11 @@ Lista de compras com comparação de preços entre lojas.
   (o nome é opcional; se digitar, ele tem prioridade).
 - Adicione **outros links** do mesmo produto em outras lojas para comparar.
 - Informe o **frete** de cada loja: o site soma preço + frete e **destaca o menor valor total**, mostrando quanto você economiza.
+- **Kits e tamanhos diferentes:** compara pelo **preço por unidade** (peça, kg, litro ou metro).
+  Ex.: kit 10 peças por R$ 34,90 = **R$ 3,49/peça** × kit 5 peças por R$ 24,90 = R$ 4,98/peça.
+  A quantidade é detectada no título do anúncio ("Kit 10 peças", "c/ 12", "12 x 350 ml",
+  "1,6 kg"…) e pode ser corrigida na tabela. O frete entra na conta.
+- **Juntar com…** une produtos do mesmo tipo cadastrados separados, para comparar as ofertas juntas.
 - Marque **"Já comprei"** para tirar o produto da lista "A comprar".
 - O topo mostra quanto falta gastar (pelo menor preço) e o que já foi comprado.
 - **Modo escuro** por padrão, com botão para alternar para o claro (a escolha fica salva).

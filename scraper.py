@@ -143,7 +143,7 @@ def _meta(soup: BeautifulSoup, *nomes: str) -> str | None:
     return None
 
 
-def extrair_de_html(html: str, url: str) -> dict:
+def extrair_de_html(html: str | bytes, url: str) -> dict:
     soup = BeautifulSoup(html, "html.parser")
     nome = imagem = None
     preco = None
@@ -192,7 +192,78 @@ def extrair(url: str, timeout: int = 12) -> dict:
         resultado["erro"] = f"Não foi possível abrir a página ({exc.__class__.__name__})."
         return resultado
 
-    resultado.update(extrair_de_html(resp.text, resp.url))
+    # Se o servidor não informa o charset, deixa o BeautifulSoup detectar pelo
+    # <meta charset> / conteúdo (evita "AlgodÃ£o" no lugar de "Algodão").
+    tipo = resp.headers.get("Content-Type", "").lower()
+    html = resp.text if "charset=" in tipo else resp.content
+    resultado.update(extrair_de_html(html, resp.url))
     if not resultado["preco"]:
         resultado["erro"] = "Não encontrei o preço automaticamente — preencha manualmente."
     return resultado
+
+
+# --------------------------------------------------------------------------
+# Quantidade na oferta (kits, pacotes, peso, volume)
+# --------------------------------------------------------------------------
+UNIDADES = ("un", "kg", "L", "m")
+
+_CONTAGEM = r"(?:pe[çc]as?|p[çc]s|pcs|unidades?|unids?|un\b|und\b|pares|pars?\b|rolos?|c[áa]psulas?|sach[êe]s?|latas?|garrafas?|itens|folhas|fraldas|pacotes?|barras?|tabletes?|potes?|refis|refil)"
+_MEDIDA = {
+    "kg": ("kg", 1), "quilos": ("kg", 1), "quilo": ("kg", 1), "g": ("kg", 0.001), "gramas": ("kg", 0.001), "gr": ("kg", 0.001),
+    "l": ("L", 1), "lt": ("L", 1), "litro": ("L", 1), "litros": ("L", 1), "ml": ("L", 0.001),
+    "m": ("m", 1), "metro": ("m", 1), "metros": ("m", 1), "mts": ("m", 1), "cm": ("m", 0.01),
+}
+_RE_MEDIDA = r"(kg|quilos?|gramas|gr|g|litros?|lt|l|ml|metros?|mts|m|cm)\b"
+
+
+def _num(txt: str) -> float:
+    return float(txt.replace(".", "").replace(",", ".")) if "," in txt else float(txt)
+
+
+def detectar_quantidades(texto: str | None) -> dict:
+    """Lê do título quantas unidades / kg / L / m a oferta tem.
+
+    'Kit 10 Calcinhas'            -> {'un': 10}
+    'Cerveja Lata 350ml c/ 12'    -> {'un': 12, 'L': 4.2}
+    'Sabão em pó 1,6kg'           -> {'kg': 1.6}
+    'Fardo 12 x 350 ml'           -> {'un': 12, 'L': 4.2}
+    """
+    if not texto:
+        return {}
+    t = texto.lower().replace(" ", " ")
+    achado: dict[str, float] = {}
+
+    # multipack: "12 x 350ml", "6x1l", "3 un x 90g"
+    m = re.search(r"(\d+)\s*(?:" + _CONTAGEM + r")?\s*x\s*(\d+(?:[.,]\d+)?)\s*" + _RE_MEDIDA, t)
+    if m:
+        n, valor, uni = int(m.group(1)), _num(m.group(2)), m.group(3)
+        base, fator = _MEDIDA[uni]
+        achado["un"] = n
+        achado[base] = round(n * valor * fator, 4)
+        return achado
+
+    # contagem: "10 peças", "kit com 5", "c/ 12", "pacote 6 un", "leve 3"
+    padroes_un = [
+        r"(\d+)\s*" + _CONTAGEM,
+        r"(?:kit|pack|pacote|caixa|combo|leve|conjunto|jogo|fardo|cx)\s*(?:com|c/|de|contendo)?\s*(\d+)\b(?!\s*(?:[.,]\d)|\s*" + _RE_MEDIDA + r")",
+        r"\bc/\s*(\d+)\b(?!\s*(?:[.,]\d)|\s*" + _RE_MEDIDA + r")",
+        r"\bcom\s*(\d+)\b(?!\s*(?:[.,]\d)|\s*" + _RE_MEDIDA + r")",
+    ]
+    for p in padroes_un:
+        m = re.search(p, t)
+        if m and 0 < int(m.group(1)) <= 1000:
+            achado["un"] = int(m.group(1))
+            break
+
+    # medida simples: "1,6kg", "500 ml", "2 litros", "50m"
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*" + _RE_MEDIDA, t):
+        base, fator = _MEDIDA[m.group(2)]
+        if base not in achado:
+            # medida por unidade × número de unidades do kit
+            achado[base] = round(_num(m.group(1)) * fator * achado.get("un", 1), 4)
+    return achado
+
+
+def quantidade_para(texto: str | None, unidade: str) -> float | None:
+    """Quantidade da oferta na unidade de comparação do produto."""
+    return detectar_quantidades(texto).get(unidade)

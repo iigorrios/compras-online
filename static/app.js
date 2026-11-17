@@ -1,6 +1,18 @@
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const fmt = (v) => (v == null ? "—" : brl.format(v));
+const num = (v, casas = 3) => (v == null ? "" : Number(v).toLocaleString("pt-BR", { maximumFractionDigits: casas }));
 const $ = (sel, el = document) => el.querySelector(sel);
+
+// Unidade de comparação: rótulo curto (para "R$ x/un") e nome por extenso
+const UNIDADES = {
+  un: { curto: "un", nome: "unidade/peça" },
+  kg: { curto: "kg", nome: "kg" },
+  L: { curto: "L", nome: "litro" },
+  m: { curto: "m", nome: "metro" },
+};
+// preço por unidade com casas suficientes para valores pequenos (ex.: R$ 0,0123/ml)
+const fmtUn = (v) =>
+  v == null ? "—" : v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: v < 1 ? 4 : 2 });
 
 let produtos = [];
 let filtro = "pendentes";
@@ -23,7 +35,7 @@ function toast(msg) {
   el.textContent = msg;
   el.hidden = false;
   clearTimeout(toast.t);
-  toast.t = setTimeout(() => (el.hidden = true), 4000);
+  toast.t = setTimeout(() => (el.hidden = true), 4500);
 }
 
 function substituir(produto) {
@@ -46,7 +58,7 @@ function renderResumo() {
     .reduce((s, p) => s + (p.melhor_total || 0) * p.quantidade, 0);
   $("#resumo").innerHTML = `
     <div><small>A comprar</small><strong>${pend.length}</strong></div>
-    <div><small>Total (menor preço + frete)</small><strong>${fmt(total)}</strong></div>
+    <div><small>Total (melhor oferta + frete)</small><strong>${fmt(total)}</strong></div>
     <div><small>Economia comparando</small><strong>${fmt(economia)}</strong></div>
     <div><small>Já comprado</small><strong>${fmt(gasto)}</strong></div>`;
 }
@@ -63,16 +75,40 @@ function render() {
   );
   if (!visiveis.length) {
     lista.innerHTML = `<p class="vazio">${
-      produtos.length ? "Nenhum produto neste filtro." : "Sua lista está vazia. Adicione o primeiro produto acima."
+      produtos.length ? "Nenhum produto neste filtro." : "Sua lista está vazia. Cole o link do primeiro produto acima."
     }</p>`;
     return;
   }
   for (const p of visiveis) lista.appendChild(cardProduto(p));
 }
 
+function textoDestaque(p) {
+  const comPreco = p.links.filter((l) => l.total != null);
+  if (!comPreco.length) return null;
+  const m = comPreco[0];
+  const u = UNIDADES[p.unidade];
+  const frete = m.frete ? ` + frete ${fmt(m.frete)}` : " (frete grátis/não informado)";
+  if (!p.compara_kits) {
+    let txt = `✅ Menor valor: <strong>${fmt(m.total)}</strong> na <strong>${esc(m.loja)}</strong>`;
+    txt += m.frete ? ` (produto ${fmt(m.preco)}${frete})` : frete;
+    if (comPreco.length > 1 && p.economia > 0) txt += ` — economia de ${fmt(p.economia)} vs. a opção mais cara`;
+    return txt;
+  }
+  let txt = `✅ Melhor custo-benefício: <strong>${fmtUn(m.por_unidade)} por ${u.curto}</strong> na <strong>${esc(m.loja)}</strong>`;
+  txt += ` — ${num(m.quantidade)} ${u.curto} por ${fmt(m.preco)}${frete}`;
+  if (comPreco.length > 1) {
+    const pior = comPreco[comPreco.length - 1];
+    if (pior.mais_caro_pct > 0)
+      txt += `. A opção mais cara sai <strong>${num(pior.mais_caro_pct, 1)}% mais caro por ${u.curto}</strong>`;
+    if (p.economia > 0) txt += ` (economia de ${fmt(p.economia)} nessa quantidade)`;
+  }
+  return txt + ".";
+}
+
 function cardProduto(p) {
   const el = $("#tpl-produto").content.firstElementChild.cloneNode(true);
   el.classList.toggle("feito", p.comprado);
+  const u = UNIDADES[p.unidade];
 
   const foto = $(".foto", el);
   const img = $("img", foto);
@@ -86,32 +122,36 @@ function cardProduto(p) {
   $(".nome", el).textContent = p.quantidade > 1 ? `${p.nome} (x${p.quantidade})` : p.nome;
   $(".obs", el).textContent = p.observacao || "";
 
+  const sel = $(".unidade", el);
+  sel.value = p.unidade;
+  sel.onchange = async () => {
+    substituir(await api("PATCH", `/api/produtos/${p.id}`, { unidade: sel.value }));
+    toast(`Comparando por ${UNIDADES[sel.value].nome}. Confira a quantidade de cada oferta.`);
+  };
+
   const chk = $(".comprado", el);
   chk.checked = p.comprado;
   chk.onchange = async () => substituir(await api("PATCH", `/api/produtos/${p.id}`, { comprado: chk.checked }));
 
   const destaque = $(".destaque", el);
-  const comPreco = p.links.filter((l) => l.total != null);
-  if (comPreco.length) {
-    const m = comPreco[0];
-    let txt = `✅ Menor valor: <strong>${fmt(m.total)}</strong> na <strong>${esc(m.loja)}</strong>`;
-    txt += m.frete ? ` (produto ${fmt(m.preco)} + frete ${fmt(m.frete)})` : " (frete grátis/não informado)";
-    if (comPreco.length > 1 && p.economia > 0) txt += ` — economia de ${fmt(p.economia)} vs. a opção mais cara`;
-    destaque.innerHTML = txt;
-  } else {
+  const txt = textoDestaque(p);
+  if (txt) destaque.innerHTML = txt;
+  else {
     destaque.classList.add("neutro");
     destaque.textContent = p.links.length
       ? "Informe o preço dos links para comparar."
       : "Adicione links de compra para comparar os preços.";
   }
 
+  $(".th-qtd", el).textContent = p.unidade === "un" ? "Qtd. (peças)" : `Qtd. (${u.curto})`;
+  $(".th-un", el).textContent = `Por ${u.curto}`;
   const tbody = $("tbody", el);
   if (!p.links.length) {
     $(".ofertas", el).replaceWith(Object.assign(document.createElement("p"), {
       className: "sem-ofertas", textContent: "Nenhum link ainda.",
     }));
   }
-  for (const l of p.links) tbody.appendChild(linhaLink(l));
+  for (const l of p.links) tbody.appendChild(linhaLink(l, p));
 
   const form = $(".form-link", el);
   form.onsubmit = async (ev) => {
@@ -129,13 +169,14 @@ function cardProduto(p) {
   $(".editar", el).onclick = async () => {
     const nome = prompt("Nome do produto:", p.nome);
     if (nome == null) return;
-    const quantidade = prompt("Quantidade:", p.quantidade);
+    const quantidade = prompt("Quantas vezes vai comprar esta oferta?", p.quantidade);
     const foto_url = prompt("URL da foto (vazio = foto da loja):", p.foto_url || "");
     const observacao = prompt("Observação:", p.observacao || "");
     substituir(await api("PATCH", `/api/produtos/${p.id}`, {
       nome, quantidade: quantidade || 1, foto_url: foto_url ?? p.foto_url, observacao: observacao ?? p.observacao,
     }));
   };
+  $(".juntar", el).onclick = () => juntar(p);
   $(".excluir", el).onclick = async () => {
     if (!confirm(`Excluir "${p.nome}" e todos os links?`)) return;
     await api("DELETE", `/api/produtos/${p.id}`);
@@ -145,15 +186,39 @@ function cardProduto(p) {
   return el;
 }
 
-function linhaLink(l) {
+async function juntar(p) {
+  const outros = produtos.filter((x) => x.id !== p.id);
+  if (!outros.length) return toast("Não há outro produto para juntar.");
+  const lista = outros.map((x, i) => `${i + 1}. ${x.nome}`).join("\n");
+  const resp = prompt(
+    `Juntar "${p.nome}" com qual produto?\nAs ofertas dele passam para o escolhido e serão comparadas juntas.\n\n${lista}\n\nDigite o número:`
+  );
+  const destino = outros[parseInt(resp, 10) - 1];
+  if (!destino) return;
+  const r = await api("POST", `/api/produtos/${p.id}/juntar`, { destino: destino.id });
+  produtos = produtos.filter((x) => x.id !== p.id);
+  substituir(r.produto);
+  toast(`Ofertas movidas para "${destino.nome}".`);
+}
+
+function linhaLink(l, p) {
+  const u = UNIDADES[p.unidade];
   const tr = document.createElement("tr");
   if (l.melhor) tr.className = "melhor";
+  const dec = (v) => (v != null ? v.toFixed(2).replace(".", ",") : "");
+  const selo = l.melhor
+    ? `<span class="selo">${p.compara_kits ? "MELHOR CUSTO" : "MENOR PREÇO"}</span>`
+    : l.mais_caro_pct > 0 ? `<span class="mais-caro">+${num(l.mais_caro_pct, 1)}%</span>` : "";
   tr.innerHTML = `
-    <td class="loja"><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.loja || "Loja")} ↗</a>${
-      l.melhor ? '<span class="selo">MENOR PREÇO</span>' : ""}</td>
-    <td data-r="Preço"><input class="preco" inputmode="decimal" value="${l.preco != null ? l.preco.toFixed(2).replace(".", ",") : ""}" placeholder="informar"></td>
-    <td data-r="Frete"><input class="frete" inputmode="decimal" value="${l.frete ? l.frete.toFixed(2).replace(".", ",") : ""}" placeholder="0,00"></td>
+    <td class="loja">
+      <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.loja || "Loja")} ↗</a>${selo}
+      ${l.titulo ? `<div class="titulo" title="${esc(l.titulo)}">${esc(l.titulo)}</div>` : ""}
+    </td>
+    <td data-r="Qtd. (${u.curto})"><input class="qtd" inputmode="decimal" value="${num(l.quantidade)}" title="Quantas ${p.unidade === "un" ? "peças/unidades" : u.nome + "s"} vêm nesta oferta"></td>
+    <td data-r="Preço"><input class="preco" inputmode="decimal" value="${dec(l.preco)}" placeholder="informar"></td>
+    <td data-r="Frete"><input class="frete" inputmode="decimal" value="${l.frete ? dec(l.frete) : ""}" placeholder="0,00"></td>
     <td data-r="Total" class="total">${fmt(l.total)}</td>
+    <td data-r="Por ${u.curto}" class="por-un">${fmtUn(l.por_unidade)}</td>
     <td class="acoes-link">
       <button class="link-btn atualizar" title="Buscar preço novamente na loja">↻ preço</button>
       <button class="link-btn perigo remover" title="Remover link">✕</button>
@@ -161,7 +226,7 @@ function linhaLink(l) {
 
   const salvar = async () => {
     const r = await api("PATCH", `/api/links/${l.id}`, {
-      preco: $(".preco", tr).value, frete: $(".frete", tr).value,
+      preco: $(".preco", tr).value, frete: $(".frete", tr).value, quantidade: $(".qtd", tr).value,
     });
     substituir(r.produto);
   };

@@ -23,7 +23,7 @@ body {
 }
 .wrap { max-width: 980px; margin: 0 auto; padding: 0 16px; }
 h1, h2, h3 { margin: 0; }
-input, button { font: inherit; color: inherit; }
+input, button, select { font: inherit; color: inherit; }
 
 .topo { background: var(--card); border-bottom: 1px solid var(--borda); padding: 18px 0; margin-bottom: 20px; }
 .topo .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; }
@@ -42,7 +42,10 @@ input {
   width: 100%; padding: 9px 11px; border: 1px solid var(--borda); border-radius: 9px;
   background: var(--bg);
 }
-input:focus { outline: 2px solid var(--primaria); outline-offset: -1px; }
+select {
+  width: 100%; padding: 9px 11px; border: 1px solid var(--borda); border-radius: 9px; background: var(--bg);
+}
+input:focus, select:focus { outline: 2px solid var(--primaria); outline-offset: -1px; }
 
 .btn {
   border: 1px solid var(--borda); background: var(--bg); border-radius: 9px;
@@ -95,7 +98,14 @@ input:focus { outline: 2px solid var(--primaria); outline-offset: -1px; }
 .ofertas tr.melhor td:last-child { border-radius: 0 8px 8px 0; }
 .ofertas .total { font-weight: 700; }
 .ofertas tr.melhor .total { color: var(--verde); }
-.ofertas input { width: 92px; padding: 5px 7px; }
+.ofertas input { width: 88px; padding: 5px 7px; }
+.ofertas input.qtd { width: 64px; }
+.ofertas .por-un { font-weight: 600; white-space: nowrap; }
+.ofertas tr.melhor .por-un { color: var(--verde); }
+.ofertas .titulo { color: var(--suave); font-size: .78rem; max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mais-caro { display: inline-block; color: var(--perigo); font-size: .74rem; font-weight: 600; margin-left: 6px; }
+.comparar { display: inline-flex; align-items: center; gap: 6px; color: var(--suave); font-size: .8rem; margin-top: 6px; }
+.comparar select { width: auto; padding: 3px 8px; font-size: .82rem; }
 .ofertas .loja a { color: var(--primaria); font-weight: 600; text-decoration: none; }
 .ofertas .loja a:hover { text-decoration: underline; }
 .selo { display: inline-block; background: var(--verde); color: #fff; font-size: .7rem; font-weight: 700; border-radius: 99px; padding: 1px 8px; margin-left: 6px; }
@@ -106,7 +116,7 @@ input:focus { outline: 2px solid var(--primaria); outline-offset: -1px; }
 .acoes-link { white-space: nowrap; text-align: right; }
 .sem-ofertas { color: var(--suave); font-size: .88rem; }
 
-.form-link { display: grid; grid-template-columns: 1fr 110px 120px auto; gap: 8px; }
+.form-link { display: grid; grid-template-columns: 1fr 100px 110px 100px auto; gap: 8px; }
 .acoes { display: flex; gap: 10px; justify-content: flex-end; }
 
 .toast {
@@ -120,8 +130,9 @@ input:focus { outline: 2px solid var(--primaria); outline-offset: -1px; }
   .grid-form .span3, .grid-form .span2 { grid-column: span 2; }
   .produto { grid-template-columns: 1fr; }
   .foto { width: 100%; height: 200px; }
-  .form-link { grid-template-columns: 1fr 1fr; }
-  .form-link input[name=url] { grid-column: span 2; }
+  .form-link { grid-template-columns: 1fr 1fr 1fr; }
+  .form-link input[name=url], .form-link button { grid-column: span 3; }
+  .ofertas .titulo { max-width: 100%; white-space: normal; }
   .ofertas thead { display: none; }
   .ofertas tr { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; padding: 6px 0; }
   .ofertas td { border: 0; padding: 2px 6px; }

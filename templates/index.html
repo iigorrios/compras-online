@@ -34,7 +34,15 @@
         <label>Frete (R$)
           <input name="frete" inputmode="decimal" placeholder="0,00">
         </label>
-        <label class="span2">Foto (URL, opcional)
+        <label>Comparar preço por
+          <select name="unidade">
+            <option value="un">Unidade / peça</option>
+            <option value="kg">Peso (kg)</option>
+            <option value="L">Volume (litro)</option>
+            <option value="m">Comprimento (metro)</option>
+          </select>
+        </label>
+        <label>Foto (URL, opcional)
           <input name="foto_url" type="url" placeholder="Usa a foto da loja se vazio">
         </label>
         <button class="btn primario span3" type="submit">Adicionar</button>
@@ -63,22 +71,32 @@
           <div>
             <h3 class="nome"></h3>
             <p class="obs"></p>
+            <label class="comparar">Comparar por
+              <select class="unidade">
+                <option value="un">unidade / peça</option>
+                <option value="kg">kg</option>
+                <option value="L">litro</option>
+                <option value="m">metro</option>
+              </select>
+            </label>
           </div>
           <label class="check"><input type="checkbox" class="comprado"> <span>Já comprei</span></label>
         </div>
         <div class="destaque"></div>
         <table class="ofertas">
-          <thead><tr><th>Loja</th><th>Preço</th><th>Frete</th><th>Total</th><th></th></tr></thead>
+          <thead><tr><th>Loja / oferta</th><th class="th-qtd">Qtd.</th><th>Preço</th><th>Frete</th><th>Total</th><th class="th-un">Por un</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
         <form class="form-link">
           <input name="url" type="url" required placeholder="Colar outro link de compra…">
           <input name="frete" inputmode="decimal" placeholder="Frete R$">
           <input name="preco" inputmode="decimal" placeholder="Preço (auto)">
+          <input name="quantidade_oferta" inputmode="decimal" placeholder="Qtd. (auto)" title="Quantas peças/kg/L vêm nesta oferta — detectado pelo título se vazio">
           <button class="btn" type="submit">+ Link</button>
         </form>
         <div class="acoes">
           <button class="link-btn editar">Editar</button>
+          <button class="link-btn juntar" title="Unir este produto com outro do mesmo tipo para comparar as ofertas juntas">Juntar com…</button>
           <button class="link-btn perigo excluir">Excluir produto</button>
         </div>
       </div>
