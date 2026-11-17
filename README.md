@@ -2,11 +2,13 @@
 
 Lista de compras com comparação de preços entre lojas.
 
-- Cadastre o que precisa comprar (nome, quantidade, foto opcional).
-- Cole os **links de compra**: o site busca sozinho **foto, nome da loja e preço**.
+- Cole o **link do produto** e pronto: o site busca sozinho **nome, foto, loja e preço**
+  (o nome é opcional; se digitar, ele tem prioridade).
+- Adicione **outros links** do mesmo produto em outras lojas para comparar.
 - Informe o **frete** de cada loja: o site soma preço + frete e **destaca o menor valor total**, mostrando quanto você economiza.
 - Marque **"Já comprei"** para tirar o produto da lista "A comprar".
 - O topo mostra quanto falta gastar (pelo menor preço) e o que já foi comprado.
+- **Modo escuro** por padrão, com botão para alternar para o claro (a escolha fica salva).
 
 ## Como rodar
 

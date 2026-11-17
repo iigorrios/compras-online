@@ -1,6 +1,7 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="dark">
 <head>
+  <script>try{document.documentElement.dataset.theme=localStorage.getItem("tema")||"dark"}catch(e){}</script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Minhas Compras</title>
@@ -9,7 +10,10 @@
 <body>
   <header class="topo">
     <div class="wrap">
-      <h1>🛒 Minhas Compras</h1>
+      <div class="marca">
+        <h1>🛒 Minhas Compras</h1>
+        <button id="tema" class="btn tema" type="button"></button>
+      </div>
       <div class="resumo" id="resumo"></div>
     </div>
   </header>
@@ -18,14 +22,14 @@
     <section class="card novo">
       <h2>Adicionar produto</h2>
       <form id="form-produto" class="grid-form">
-        <label class="span2">Produto
-          <input name="nome" required placeholder="Ex.: Air fryer 5L">
+        <label class="span3">Link de compra — busca nome, foto e preço automaticamente
+          <input name="url" type="url" placeholder="Cole aqui o link do produto (https://...)" autofocus>
+        </label>
+        <label class="span2">Nome do produto (opcional se colar o link)
+          <input name="nome" placeholder="Deixe vazio para usar o nome da loja">
         </label>
         <label>Qtd.
           <input name="quantidade" type="number" min="1" value="1">
-        </label>
-        <label class="span3">Link de compra (opcional — já busca foto e preço)
-          <input name="url" type="url" placeholder="https://...">
         </label>
         <label>Frete (R$)
           <input name="frete" inputmode="decimal" placeholder="0,00">

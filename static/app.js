@@ -191,17 +191,17 @@ $("#form-produto").onsubmit = async (ev) => {
   const form = ev.target;
   const btn = $("button", form);
   const dados = Object.fromEntries(new FormData(form));
+  if (!dados.nome.trim() && !dados.url.trim()) {
+    toast("Cole um link de compra ou digite o nome do produto.");
+    return;
+  }
   btn.disabled = true; btn.textContent = dados.url ? "Buscando dados da loja…" : "Salvando…";
   try {
-    let produto = await api("POST", "/api/produtos", dados);
-    if (dados.url) {
-      const r = await api("POST", `/api/produtos/${produto.id}/links`, { url: dados.url, frete: dados.frete });
-      if (r.aviso) toast(r.aviso);
-      produto = r.produto;
-    }
+    const r = await api("POST", "/api/produtos", dados);
+    if (r.aviso) toast(r.aviso);
     form.reset();
     if (filtro === "comprados") setFiltro("pendentes");
-    substituir(produto);
+    substituir(r.produto);
   } catch (e) { toast(e.message); }
   btn.disabled = false; btn.textContent = "Adicionar";
 };
@@ -213,5 +213,16 @@ function setFiltro(f) {
 }
 for (const b of document.querySelectorAll("#abas button")) b.onclick = () => setFiltro(b.dataset.filtro);
 $("#busca").oninput = (e) => { busca = e.target.value; render(); };
+
+// ---- tema claro/escuro (padrão: escuro; a escolha fica salva no navegador)
+function aplicarTema(tema) {
+  document.documentElement.dataset.theme = tema;
+  const btn = $("#tema");
+  btn.textContent = tema === "dark" ? "☀️ Modo claro" : "🌙 Modo escuro";
+  try { localStorage.setItem("tema", tema); } catch {}
+}
+$("#tema").onclick = () =>
+  aplicarTema(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+aplicarTema(document.documentElement.dataset.theme || "dark");
 
 carregar().catch((e) => toast(e.message));

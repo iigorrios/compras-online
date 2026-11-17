@@ -113,19 +113,38 @@ def listar_produtos():
 
 @app.post("/api/produtos")
 def criar_produto():
+    """Cria um produto. Se vier um link, o nome/foto/preço são lidos da loja
+    (o nome digitado, se houver, tem prioridade)."""
     dados = request.get_json(force=True)
     nome = (dados.get("nome") or "").strip()
-    if not nome:
-        return jsonify(erro="Informe o nome do produto."), 400
+    url = (dados.get("url") or "").strip()
+    if url and not url.startswith(("http://", "https://")):
+        return jsonify(erro="Informe um link começando com http:// ou https://"), 400
+    if not nome and not url:
+        return jsonify(erro="Informe o nome do produto ou cole um link de compra."), 400
+
+    info, aviso = None, None
+    if url:
+        info = scraper.extrair(url)
+        aviso = info["erro"]
+        nome = nome or info["nome"]
+        if not nome:
+            return jsonify(erro="Não consegui ler o nome do produto nesse link — digite o nome."), 400
+
     produto = Produto(
-        nome=nome,
+        nome=nome[:200],
         foto_url=(dados.get("foto_url") or "").strip() or None,
         observacao=(dados.get("observacao") or "").strip() or None,
         quantidade=int(dados.get("quantidade") or 1),
     )
     db.session.add(produto)
+    if info:
+        db.session.add(Link(
+            produto=produto, url=url, loja=info["loja"], preco=info["preco"],
+            frete=_num(dados.get("frete")), imagem=info["imagem"],
+        ))
     db.session.commit()
-    return jsonify(produto.to_dict()), 201
+    return jsonify(produto=produto.to_dict(), aviso=aviso), 201
 
 
 @app.patch("/api/produtos/<int:pid>")
