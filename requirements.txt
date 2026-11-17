@@ -1,0 +1,6 @@
+Flask>=3.0
+Flask-SQLAlchemy>=3.1
+requests>=2.31
+beautifulsoup4>=4.12
+# Para usar PostgreSQL em vez de SQLite, descomente:
+# psycopg[binary]>=3.1
